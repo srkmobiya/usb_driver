@@ -57,18 +57,17 @@ static ssize_t pen_read(struct file *f, char  *buf_t, size_t cnt, loff_t *off)
  
 	printk(KERN_ERR "Reading start \n");
 
-	urb = usb_alloc_urb(0, GFP_KERNEL);
-	trans_buf = usb_alloc_coherent(device, read_cnt, GFP_KERNEL, &urb->transfer_dma);
-	usb_fill_int_urb(urb, device, usb_rcvintpipe(device, bulk_in_endpointAddr), trans_buf, read_cnt, usb_irq, trans_buf, 2);
-	urb->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
-	retval = usb_submit_urb(urb, GFP_ATOMIC);
+	retval = usb_bulk_msg(device,
+                         usb_rcvbulkpipe(device, bulk_in_endpointAddr),
+                         buf_t,
+                         read_cnt,
+                         &cnt, 1000);
     	if (retval)
     	{
         	printk(KERN_ERR "Error message returned %d\n", retval);
         	goto error;
    	}
  
-	memcpy(buf_t, trans_buf, read_cnt);
         printk(KERN_ERR "Reading done\n");
 error:
 	return retval;
@@ -134,7 +133,7 @@ static int device_ioctl(struct inode *inode,
 		break;
 	case USB_READ:
 		ret = pen_read(file, buf , MSG_SIZE, &offset);
-		copy_to_user(pctrl, buf, 16);
+		copy_to_user(pctrl->data, buf, 64);
 
 		printk("char read data %s\n", buf);
 		break;
